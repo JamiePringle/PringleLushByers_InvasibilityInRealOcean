@@ -1,0 +1,4 @@
+#ignore files that are used to download connectivity into in open storage network.
+CodeForCarcinus/OSNdataDir
+CodeForCarcinus/modelOutputNeutral
+CodeForCarcinus/modelOutputRelativeFitness

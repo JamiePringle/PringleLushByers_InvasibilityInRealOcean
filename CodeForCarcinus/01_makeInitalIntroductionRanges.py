@@ -8,15 +8,19 @@ from collections import Counter
 import os
 
 #the purpose of this code is to break the domain up into a larger
-#number of small regions. The introductions of non-native species
-#occurs in these regions. The reason we do this is to reduce the
-#number of regions to examine -- it becomes computationally infeasable
-#to study each habitat location seperately. However, if we make the
-#regions too large, than it we will lose spatial resolution. In the
-#code below, the size of the regions, in either kilometers or model
-#habitat grid points, is defined. A certain amount of experimentation
-#and oceanographic intuition will be helpful in choosing the optimal
-#region size.
+#number of small regions each with about Nclose model grid points in
+#it. The introductions of non-native species occurs in these
+#regions. The reason we do this is to reduce the number of regions to
+#examine -- it becomes computationally infeasable to study each
+#habitat location seperately. However, if we make the regions too
+#large, than it we will lose spatial resolution. In the code below,
+#the size of the regions, in model habitat grid points, is defined. A
+#certain amount of experimentation and oceanographic intuition will be
+#helpful in choosing the optimal region size.
+
+#The target size in number of Mercator ocean model grid points is
+#Nclose. Note each of these points is roughly 1/12th of a degree in size.
+Nclose=5
 
 #if directory for the regions, "initialConditions/" does not exist, make it
 if not os.path.exists('initialConditions'):
@@ -41,14 +45,6 @@ latVec=array([nlin2lonLat[n][1] for n in nlin2lonLat])
 clf()
 plot(lonVec,latVec,'k.')
 
-
-#and here is where it gets arbitrary. For first try, pick a random
-#point. find closest Ngroup points. Make one region. Iterate until
-#no more points are not in a region.
-if True:
-    #this was what we did in points
-    Nclose=5
-
 #dictionary with key (nx,ny) to keep species number in. When done, len(nSpecies)==Ndomain
 nSpecies={}
 
@@ -59,7 +55,7 @@ nSpecies={}
 # dictionary of all points that are adjacent to it but not in any
 # other species. Call this A
 #
-# START HERE: Add all points in A to to H, and make a newA with all points that
+# Add all points in A to to H, and make a newA with all points that
 # are adjacent to points in A and not in H or any other species.
 #
 # make newA into A, and repeat, until size of H exceeds Nclose.

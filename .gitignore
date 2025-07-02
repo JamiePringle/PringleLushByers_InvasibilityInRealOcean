@@ -1,4 +1,8 @@
 #ignore emacs edit files and byte-compiled python
 *~
 *.pyc
+CodeForCarcinus/OSNdataDir/**
+CodeForCarcinus/modelOutputNeutral/**
+CodeForCarcinus/modelOutputRelativeFitness/**
+
 #*#

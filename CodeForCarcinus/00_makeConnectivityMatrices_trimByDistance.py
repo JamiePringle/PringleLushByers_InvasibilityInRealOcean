@@ -23,16 +23,19 @@ import createLinearModel_module as cLM
 #find where data is stored, in OSN data store
 matDir='EZfateData/communityConnectivityMatrices/'
 
-#make the function that will calculate the transpose, and take as
-#argument what will be iterated over in the parallel runs. Look in the
-#code to see what "inParam" does
+#the output of this function is stored in the transposes directory. Create if
+#it does not exist
+if not os.path.exists('transposes'):
+    os.mkdir('transposes')
+    print('made directory "transposes" to store initial region locations')
+
+#This function defines the connectivity in a habitat whose spatial
+#extent is defined below.  This version of the code uses the depth of
+#the water and a polygon of latitudes and longitudes to define the
+#extent of the habitat.  The paramater "inParam" defines what larval
+#duration is used to extimate the connectivity. 
 def makeTranspose(inParam):
 
-    #first, define the habitat that you will be examining. 
-
-    #an easy way to define a polygon of lat lons is with
-    #https://www.mapsdirections.info/en/draw-route-google-maps/
-    #and save the KML file, and copy the lat/lon points from the KML file
 
     if True:
         #first, name your habitat -- this is your free choice
@@ -40,16 +43,16 @@ def makeTranspose(inParam):
 
         #what are the months in which dispersal happens?
         #for Carcinus maenas, in Maine, Most eggs are
-        #released from May to June, Berrill 1982, and the
+        #released from May through June, Berrill 1982, and the
         #planktonic duration is about 40 days for mid-Maine
         #temperature -- Pringle et al. 2011
         inMonths=arange(5,6+1)
         #inMonths=arange(5,6); print('#HACK FOR DEBUGING, ONLY LOAD ONE MONTH')
 
-        #what depth are the larvae
+        #what depth are the larvae, in meters
         depth=1
 
-        #how long are they in the plankton; if inParam, the duration is
+        #how long are larvae in the plankton; if inParam, the duration is
         #passed into the makeTranspose function
         minPLD=inParam; maxPLD=minPLD
 
@@ -58,7 +61,17 @@ def makeTranspose(inParam):
         #dimensions
         vertBehavior='fixed'
 
-        #make a polygon that encompasses your habitat. 
+        #define how far from land your habitat should extend. The
+        #units of distance are 1/12th of a degree, the grid spacing
+        #of the Mercator GLORYS ocean model.
+        gridRadius=2.1*sqrt(2)
+
+        #Define the spatial extent of the habitat that you will be
+        #examining.  an easy way to define a polygon of lat lons is
+        #with
+        #https://www.mapsdirections.info/en/draw-route-google-maps/
+        #and save the KML file, and copy the lat/lon points from the
+        #KML file make a polygon that encompasses your habitat.
         regionPoly=[(-73.300781,34.537106),
                     (-79.013672,37.660994),
                     (-77.695313,41.32217),
@@ -84,111 +97,107 @@ def makeTranspose(inParam):
     transposeFileName='transposes/Etranspose'+rootFileName
     connectFileName='transposes/E'+rootFileName
 
-    #if the transpose file exists, do not re-create. If you do want to recreate it, delete the file
-    if not os.path.exists(transposeFileName):
-        #load a number of matrices to play with, and combine them to get a seasonal matrix
-        store=zarr.MemoryStore()
-        E=mcm.makeEmptyConnectivity(store)
+    #load a number of matrices to play with, and combine them to get a seasonal matrix
+    store=zarr.MemoryStore()
+    E=mcm.makeEmptyConnectivity(store)
 
-        #loop over the regions that you wish to include -- there is no
-        #need to download the data for a region if that region is not
-        #in the polygon defined by regionPoly.
-        for regionName in ['theAmericas']:#['AsiaPacific', 'EuropeAfricaMiddleEast', 'theAmericas']:
-            for month in inMonths:
-                print('   working on month',month,'in region',regionName,'for inParam',inParam,flush=True)
-                matInFile=(matDir+
-                           '%s/%dm/%s/'%(regionName,depth,vertBehavior)+
-                           'climatology_month%2.2d_minPLD%2.2d_maxPLD%2.2d.zip'%(month,minPLD,maxPLD))
+    #loop over the regions that you wish to include -- there is no
+    #need to download the data for a region if that region is not
+    #in the polygon defined by regionPoly. Indeed, you should avoid
+    #downloading regions you don't need, because it will use up lots of
+    #disk space. 
+    for regionName in ['theAmericas']:#['AsiaPacific', 'EuropeAfricaMiddleEast', 'theAmericas']:
+        for month in inMonths:
+            print('   working on month',month,'in region',regionName,'for inParam',inParam,flush=True)
+            matInFile=(matDir+
+                       '%s/%dm/%s/'%(regionName,depth,vertBehavior)+
+                       'climatology_month%2.2d_minPLD%2.2d_maxPLD%2.2d.zip'%(month,minPLD,maxPLD))
 
-                #matInFile define locations of file that define the
-                #model grid and Lagrangian connectivity from the
-                #EZfate project, as described in
-                #https://github.com/JamiePringle/EZfate the function
-                #getEZfateFromOSN.getFileFromOSN() takes as an
-                #argument a pathway to the EZfate data on the open
-                #storage network S3 bucket, and returns the path to a
-                #local file that contains the same data. Details as to
-                #where and how this done, and where the data is
-                #stored, can be found in the getEZfateFromOSN module.
-                matInFile=getEZfateFromOSN.getFileFromOSN(matInFile)
-                matIn=zarr.open(matInFile,'r')
+            #matInFile define locations of file that define the
+            #model grid and Lagrangian connectivity from the
+            #EZfate project, as described in
+            #https://github.com/JamiePringle/EZfate the function
+            #getEZfateFromOSN.getFileFromOSN() takes as an
+            #argument a pathway to the EZfate data on the open
+            #storage network S3 bucket, and returns the path to a
+            #local file that contains the same data. Details as to
+            #where and how this done, and where the data is
+            #stored, can be found in the getEZfateFromOSN module.
+            matInFile=getEZfateFromOSN.getFileFromOSN(matInFile)
+            matIn=zarr.open(matInFile,'r')
 
-                #if a habitat is defined with distance from land
-                #defined as gridcells from land, then we need to get
-                #distance from land dictionary
-                gridDict=mcm.getGridDistanceDict(matIn.nxFrom[:],matIn.nyFrom[:],landThresh=max(2.1,depth))
+            #if a habitat is defined with distance from land
+            #defined as gridcells from land, then we need to get
+            #distance from land dictionary
+            gridDict=mcm.getGridDistanceDict(matIn.nxFrom[:],matIn.nyFrom[:],landThresh=max(2.1,depth))
 
-                #trim to all points within gridRadius of land
-                #keep all true points, even if they fall outside of To, so we can
-                #latter accurately count the number of points launched. 
-                print('   trimming by distance from land')
-                gridRadius=2.1*sqrt(2)
-                matIn=mcm.trimConnectivity(matIn,gridDict,0.0,gridRadius,keepAllTo=True)
+            #trim to all points within gridRadius of land
+            #keep all true points, even if they fall outside of To, so we can
+            #latter accurately count the number of points launched. 
+            print('   trimming by distance from land')
+            matIn=mcm.trimConnectivity(matIn,gridDict,0.0,gridRadius,keepAllTo=True)
 
-                mcm.combineConnectivity(E,matIn)
-        print('DONE reading in',inParam,'which has',E.nxFrom.shape[0],'points',flush=True)
-        print(' ',flush=True)
+            mcm.combineConnectivity(E,matIn)
+    print('DONE reading in',inParam,'which has',E.nxFrom.shape[0],'points',flush=True)
+    print(' ',flush=True)
 
-        #now, add the numLaunched variable to E. This is the total number of To variables for each from variable
-        numLaunched=[sum(p) for p in E.numTo]
-        root=zarr.group(store=zarr.MemoryStore())
-        numLaunchedZarrVar=root.empty(shape=(len(numLaunched),),name='numLaunched',dtype='i4')
-        numLaunchedZarrVar[:]=array(numLaunched)
-        zarr.convenience.copy(numLaunchedZarrVar,E,name='numLaunched')
+    #now, add the numLaunched variable to E. This is the total number of To variables for each from variable
+    numLaunched=[sum(p) for p in E.numTo]
+    root=zarr.group(store=zarr.MemoryStore())
+    numLaunchedZarrVar=root.empty(shape=(len(numLaunched),),name='numLaunched',dtype='i4')
+    numLaunchedZarrVar[:]=array(numLaunched)
+    zarr.convenience.copy(numLaunchedZarrVar,E,name='numLaunched')
 
-        #breakpoint()
-        
-        #now trim to only include habitat inside of the regionPoly
-        #polygon
-        print('trimming by polygon')
-        E=mcm.trimConnectivity_byPoly(E,regionPoly,keepInPoly=True)
-        #breakpoint()
+    #breakpoint()
 
-        #now trim connectivity again, but this time get rid of *To
-        #points that land outside of habitat
-        print('trimming To points')
-        E=mcm.trimConnectivity(E,gridDict,0.0,gridRadius,keepAllTo=False)
-        
-        #write out connectivity matrix
-        #breakpoint()
-        print('writing connectivity to disk',inParam,flush=True)
-        if os.path.exists(connectFileName):
-            shutil.rmtree(connectFileName)
-        EoutStore=zarr.DirectoryStore(connectFileName)
-        Eout=zarr.group(store=EoutStore)
-        zarr.copy(E,Eout,name='/')
-        print('   done writing',inParam,flush=True)
+    #now trim to only include habitat inside of the regionPoly
+    #polygon
+    print('trimming by polygon')
+    E=mcm.trimConnectivity_byPoly(E,regionPoly,keepInPoly=True)
+    #breakpoint()
 
-        #now invert matrix so we have the connectivity from where the
-        #larvae end up to where they started (the inverse of what we
-        #just calculated)
-        EtransposeStore=zarr.MemoryStore() #in memory
-        Etranspose=pmm.invertConMatrix(E,EtransposeStore)
+    #now trim connectivity again, but this time get rid of *To
+    #points that land outside of habitat
+    print('trimming To points')
+    E=mcm.trimConnectivity(E,gridDict,0.0,gridRadius,keepAllTo=False)
 
-        # normalizes the numTo array, which is the number of
-        # lagrangian particles which go to a given point in E by the
-        # sum of numTo, to get the likelyhood that the point in
-        # (nxFrom,nyFrom) went to one the (nxTo,nyTo) points in the
-        # matrix.  This normalized array is put in the variable
-        # propTo.  Also calculates the cumilative sum of this matrix
-        # and places it in cumSumPropTo
+    #write out connectivity matrix
+    #breakpoint()
+    print('writing connectivity to disk',inParam,flush=True)
+    if os.path.exists(connectFileName):
+        shutil.rmtree(connectFileName)
+    EoutStore=zarr.DirectoryStore(connectFileName)
+    Eout=zarr.group(store=EoutStore)
+    zarr.copy(E,Eout,name='/')
+    print('   done writing',inParam,flush=True)
 
-        print('normalizing inParam',inParam,flush=True)
-        pmm.normalizeInvertConMatrix(Etranspose)
-        print('   done normalizing',inParam,flush=True)
+    #now invert matrix so we have the connectivity from where the
+    #larvae end up to where they started (the inverse of what we
+    #just calculated)
+    EtransposeStore=zarr.MemoryStore() #in memory
+    Etranspose=pmm.invertConMatrix(E,EtransposeStore)
 
-        #now write out to disk
-        print('writing transpose to disk',inParam,flush=True)
-        if os.path.exists(transposeFileName):
-            shutil.rmtree(transposeFileName)
-        EoutStore=zarr.DirectoryStore(transposeFileName)
-        Eout=zarr.group(store=EoutStore)
-        zarr.copy(Etranspose,Eout,name='/')
-        print('   done writing',inParam,flush=True)
-        print('\n\n')
+    # normalizes the numTo array, which is the number of
+    # lagrangian particles which go to a given point in E by the
+    # sum of numTo, to get the likelyhood that the point in
+    # (nxFrom,nyFrom) went to one the (nxTo,nyTo) points in the
+    # matrix.  This normalized array is put in the variable
+    # propTo.  Also calculates the cumilative sum of this matrix
+    # and places it in cumSumPropTo
 
-    else:
-        print('WARNING: skipping',transposeFileName,'because it exists already',flush=True)
+    print('normalizing inParam',inParam,flush=True)
+    pmm.normalizeInvertConMatrix(Etranspose)
+    print('   done normalizing',inParam,flush=True)
+
+    #now write out to disk
+    print('writing transpose to disk',inParam,flush=True)
+    if os.path.exists(transposeFileName):
+        shutil.rmtree(transposeFileName)
+    EoutStore=zarr.DirectoryStore(transposeFileName)
+    Eout=zarr.group(store=EoutStore)
+    zarr.copy(Etranspose,Eout,name='/')
+    print('   done writing',inParam,flush=True)
+    print('\n\n')
 
     return connectFileName #return the fileName of the matrix we made, so we can plot it
 

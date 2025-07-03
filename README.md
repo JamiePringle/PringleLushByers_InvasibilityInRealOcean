@@ -10,9 +10,9 @@ Interactive figures and code for the Pringle, Lush and Byers paper "Alongshore v
 
 The interactive version of [Figure 3 in the paper is here](https://jamiepringle.github.io/PringleLushByers_InvasibilityInRealOcean/).
 
-### Code to replicate the results of Section ****Discussion: Comparisons with observed introductions:_Carcinus maenas_ in the Canadian Maratimes after the mid 1980s****
+### Code to replicate the results of Section _Discussion: Comparisons with observed introductions:Carcinus maenas in the Canadian Maratimes after the mid 1980s_
 
-The results in this paper can be replicated for other regions of the globe, other planktonic durations and larval vertical behaviors. The code to do so is described here. 
+The results in this paper can be replicated for other regions of the globe, other planktonic durations and larval vertical behaviors. A guide to doing so is given below, using as an example the discussion of _Carcinus maenas_. 
 
 The specific files are configured for the section on _Carcinus maenas_ because it is less computationally demanding to reproduce than the results for all of coastal North and South America. To configure the code for a different problem, it is important to step through this guide in order. 
 
@@ -24,15 +24,15 @@ conda create -n LSRfind numpy ipython matplotlib cartopy zarr xarray scikit-lear
 conda activate LSRfind
 ```
 
-When the code release in this GitHub repository [LINK TO RELEASE] is downloaded and uncompressed, it should create the necessary empty directories that this code expects: `OSNdataDir`, `modelOutputNeutral` and `modelOutputRelativeFitness`. The programs should be run in a directory which has these directories within it. 
+When the code release in this GitHub repository (look on the right column of this page) is downloaded and uncompressed, it should create the necessary empty directories that this code expects: `OSNdataDir`, `modelOutputNeutral` and `modelOutputRelativeFitness`. The programs should be run in a directory which has these directories within it. 
 
-All of the data required to run the models has been created as part of the [EZfate project](https://github.com/JamiePringle/EZfate). It will automatically be downloaded by the `getEZfateFromOSN.py` module.  
+All of the data required to run the models has been created as part of the [EZfate project](https://github.com/JamiePringle/EZfate). It will automatically be downloaded by the included `getEZfateFromOSN.py` module.  
 
 #### Step One: configure the "habitat" with `00_makeConnectivityMatrices_trimByDistance.py` or `00_makeConnectivityMatrices_trimByDepth.py`
 
 The "habitat" is defined as the collection of locations where a species can exist. It is defined on the same 1/12th of a degree grid as the ocean model used to parameterize the larval dispersal, the Mercator Ocean GLORYS model. More details on the computation of the Lagrangian particle tracks, including the available choices of vertical behavior, can be found at the [EZfate project web page.](https://github.com/JamiePringle/EZfate)
 
-In all cases, the habitat is confined to a spatial extent with a polygon defined in the variable `regionPoly`. Furthermore, you should alter the loop which defines the variable `regionName` to only include the regions will be using – this avoids unnecessarily downloading large data files. The possible regions are `theAmericas`, `AsiaPacific`, `EuropeAfricaMiddleEast` and `Antarctica` as shown in the EZfate docmentation [here.](https://jamiepringle.github.io/EZfate/03_GetData_Subset_and_Combine.html)
+In all cases, the habitat is confined to a spatial extent with a polygon defined in the variable `regionPoly`. Furthermore, you should alter the loop which defines the variable `regionName` to only include the one or more regions you will be using – this avoids unnecessarily downloading large data files. The possible regions are `theAmericas`, `AsiaPacific`, `EuropeAfricaMiddleEast` and `Antarctica` as shown in the EZfate docmentation [here.](https://jamiepringle.github.io/EZfate/03_GetData_Subset_and_Combine.html)
 
 You must also define the depth at which the larvae are released (from 1, 10, 20 and 40m depth) with the variable `depth` and the vertical behavior of the larvae (either fixed to a depth or drifting in all three dimensions) with the variable `vertBehavior`.  You can also specify what month(s) the larvae are released in the array `inMonths`. 
 
@@ -40,6 +40,7 @@ If you want to define your habitat with water depth, use `00_makeConnectivityMat
 ![100m Habitat](docs/00_makeConnectivityMatrices_trimByDepth.png)
 
 If you want to define the habitat with distance from the coast, use `00_makeConnectivityMatrices_trimByDistance.py` and define the variable `gridRadius`. The example below is for the _Carcinus maenas_ Latitude/Longitude region and for all locations less than 1/6th of a degree from the coast, or two 1/12th of a degree grid spacings (`gridRadius`=2.1), and the red points indicate 1/12th of a degree sized patches of habitat:
+
 ![Habitat by distance](docs/00_makeConnectivityMatrices_trimByDistance.png)
 
 When one or both of these codes are run, they will save connectivity data into a directory called `transposes`. This directory is created if it does not exist.  The connectivity data structures are defined [here.](https://jamiepringle.github.io/EZfate/EZfate_python_guide.html)
@@ -82,28 +83,28 @@ to
 
 #### Step Four: Figuring out what the neutral model has told us with `03_analyzeWhereSurvivorsStarted_neutralModel.py` and `03_B_analyzeWhereSurvivorsStarted_neutralModel_onlyIfInIntroductionLocation.py`
 
-`03_analyzeWhereSurvivorsStarted_neutralModel.py` calculates the fraction of introductions into each area (as defined by `01_makeInitialIntroductionRanges.py`) which persist anywhere in the domain after `Tmax` generations. `Tmax` need not just be the final generation of the model run described above, for it also writes out output every 100 hundred generations prior to the final generation.  To specify how many model runs to include (usually, as many as you specify in step three above, but perhaps less if you want to peek at results before the model is finished), specify `nRun` in the code. To specify which model run you want to examine, you must provide the name of the connectivity data it used, and the model parameters it used – for example:
+`03_analyzeWhereSurvivorsStarted_neutralModel.py` calculates the fraction of introductions into each area (as defined by `01_makeInitialIntroductionRanges.py`) which persist anywhere in the domain after `Tmax` generations. `Tmax` need not just be the final generation of the model run described above, for the model also writes out output every 100 hundred generations prior to the final generation.  To specify how many model runs to include (usually, as many as you specify in step three above, but perhaps less if you want to peek at results before the model is finished), specify `nRun` in the code. To specify which model run you want to examine, you must provide the name of the connectivity data it used, and the model parameters it used – for example:
 ```python
 #What model run are we using
 ConnectivityModelName='E_CmaenasHab_depth1_minPLD40_maxPLD40_months5_to_6'; Pmax=1; Tmax=600; R=16.0; Nintro=1
 ```
 
-When it is run, it will produce a map of the frequency of persistence at different starting locations, which after 600 generations of species time and 100 model runs, looks like. It is important note that these colored dots indicate where the introduction occurred, and may or may not represent where the population ends up persisting. This later data is saved, and you could easily plot it. 
+When it is run, it will produce a map of the frequency in percent of persistence at different starting locations, which after 600 generations of species time and 100 model runs, looks like the figure below. It is important note that these colored dots indicate where the introduction occurred, and may or may not represent where the population ends up persisting. This latter data is saved, and you could easily plot it. 
 ![Carcinus maenas neutral map](docs/03_analyzeWhereSurvivorsStarted_neutralModel.png)
 
-Now often you are interested if a species introduced into a particular location will persist in that location, and do not care if it is offspring are washed downstream and establish elsewhere. `03_B_analyzeWhereSurvivorsStarted_neutralModel_onlyIfInIntroductionLocation.py` works exactly as the last plotting code, but only includes species that persist in the introduction region where they initially started.  For the same model run, here is the plot from this code. To illustrate what can be done with this output, the analysis has been made after the model has run for only 200 generations by setting `Tmax` to 200.
+Now often you are interested if a species introduced into a particular location will persist in that location, and do not care if its offspring are washed downstream and establish elsewhere. `03_B_analyzeWhereSurvivorsStarted_neutralModel_onlyIfInIntroductionLocation.py` works exactly as the last plotting code, but only includes species that persist in the introduction region where they initially started.  For the same model run, here is the plot from this code. To illustrate what can be done with this output, the analysis has been made after the model has run for only 200 generations by setting `Tmax` to 200.
 ![Carcinus maneas neutral map, only in introduction region](docs/03_B_analyzeWhereSurvivorsStarted_neutralModel_onlyIfInIntroductionLocation.png)
 #### Step Five: moving beyond neutral species dynamics with `04_twoSpeciesModel_differentR_relativeFitnessDifference.py`
 
-Examining the introduction of species with different relative fitness is fundamentally more time-consuming, because we have to run separate introduction separately, since we cannot have different favored introductions running at the same time – they would be equally favored and just neutral with each other!
+Examining the introduction of species with different relative fitness is fundamentally more time-consuming, because we have to run separate introduction separately! We cannot have different favored introductions running at the same time – they would be equally favored and just neutral with each other!
 
-As before, the model run is stochastic, so we must run all runs with all introduction locations many times to get statistics. This variable is `nRun` and it is currently set to 100, but for production runs should probably be larger. 
+As before, the model run is stochastic, so we must run all runs with all introduction locations many times to get usefull statistics. As before, the number of runs is controlled by the variable `nRun` and it is currently set to 100, but for production runs should probably be larger. 
 
 All the parameters are as in the neutral case, except for the larval production parameter `R`. There are now two values for it – `R0` for the introduced species, and `R1` for the native species. Both can be floating point numbers.  Please read the manuscript associated with this work to see how to convert `R0` and `R1` into relative fitness. 
 
 Note that for small differences between `R0` and `R1` it can take a long time for the introduced species to go extinct, and so the number of generations the model is run `Tmax` will often need to be much longer. Here it is 2404 generations long, instead of 600 in the neutral case. 
 
-Even in cases with hyperthreading, it is often best to keep the number of cores used the same as the number of threads – but experiment! This is controlled by the `nCPU` variable. 
+Even in cases with hyperthreading, it is often best to keep the number of cores used the same as the number of threads – but experiment! This is controlled by the `nCPU` variable, as in the neutral case. 
 
 The output of the code is kept in the `modelOutputRelativeFitness` directory in a single file for each of the `nRun` model runs. Each file records how long each introduction persisted before becoming extinct (or `Tmax` if it persists), and records the final spatial distribution of the species at `Tmax` or right before it goes extinct.  Because the output of `04_twoSpeciesModel_differentR_relativeFitnessDifference.py` is written out one run at a time, the analysis code below can be used before all the runs have been completed. 
 

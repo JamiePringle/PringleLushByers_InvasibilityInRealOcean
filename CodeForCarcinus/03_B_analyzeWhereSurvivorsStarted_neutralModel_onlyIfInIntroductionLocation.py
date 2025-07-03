@@ -10,11 +10,16 @@ import cartopy
 import os
 
 
-#this code differs from 03_analyzeWhereSurvivorsStarted_neutralModel.py because it only includes species
-#that persist in the region they were introduced. 
+#this code differs from
+#03_analyzeWhereSurvivorsStarted_neutralModel.py because it only
+#includes in the statistics species that persist in the region they
+#were introduced.
+
+#how many runs to include
+nRun=100
 
 #What model run are we using
-ConnectivityModelName='E_CmaenasHab_depth1_minPLD40_maxPLD40_months5_to_6'; Pmax=1; Tmax=100; R=16.0; Nintro=1
+ConnectivityModelName='E_CmaenasHab_depth1_minPLD40_maxPLD40_months5_to_6'; Pmax=1; Tmax=200; R=16.0; Nintro=1
 
 #load connectivity data
 EfileName='transposes/'+ConnectivityModelName+'.zarr'
@@ -24,13 +29,10 @@ initialConditionFile='initialConditions/'+ConnectivityModelName+'.zip'
 jnk=zarr.load(initialConditionFile)
 speciesList=jnk['nSpecies']
 
-#how many runs to include
-nRun=1000
-
 hasArunExisted=False
 for nR in range(nRun):
 
-    fileName=('modelOutputNeutral/twoSpecies_'+ConnectivityModelName+
+    fileName=('modelOutputNeutral/manySpecies_'+ConnectivityModelName+
                   '_Params_R_%2.2d_Tmax%3.3d_Pmax%2.2d_Nintro%2.2d_nRun%d.zip'%(R,Tmax,Pmax,Nintro,nR))
 
     if not os.path.exists(fileName):
@@ -124,7 +126,8 @@ for n in range(Nspecies):
             
 colorbar(shrink=0.7,location='left')
 
-title(EfileName+'\nstarting locations of survivors after %d generations; plotThresh=%4.2e\nonly include those in intro domain'%(Tmax,
+title(EfileName+
+      '\nstarting locations of survivors after %d generations; plotThresh=%4.2e\nonly include those in intro domain'%(Tmax,
                                                                                     plotThresh),fontsize='small')
 tight_layout()
 

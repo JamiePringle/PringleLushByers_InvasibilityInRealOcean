@@ -10,6 +10,9 @@ import cartopy
 import os
 
 
+#how many runs to include
+nRun=100
+
 #What model run are we using
 ConnectivityModelName='E_CmaenasHab_depth1_minPLD40_maxPLD40_months5_to_6'; Pmax=1; Tmax=600; R=16.0; Nintro=1
 
@@ -21,13 +24,11 @@ initialConditionFile='initialConditions/'+ConnectivityModelName+'.zip'
 jnk=zarr.load(initialConditionFile)
 speciesList=jnk['nSpecies']
 
-#how many runs to include
-nRun=1000
 
 hasArunExisted=False
 for nR in range(nRun):
 
-    fileName=('modelOutputNeutral/twoSpecies_'+ConnectivityModelName+
+    fileName=('modelOutputNeutral/manySpecies_'+ConnectivityModelName+
                   '_Params_R_%2.2d_Tmax%3.3d_Pmax%2.2d_Nintro%2.2d_nRun%d.zip'%(R,Tmax,Pmax,Nintro,nR))
 
     if not os.path.exists(fileName):

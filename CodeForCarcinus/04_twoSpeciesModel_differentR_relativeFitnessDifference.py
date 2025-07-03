@@ -191,47 +191,19 @@ def whichLarvaeSurvive(whereSettle,lowerBound,upperBound,Pmax,Ndomain,Nspecies):
 
 def runModelOnce(Pinit,R0,R1,Pmax,Tmax,nsp):
     '''
+
     Now the whole model is wrapped in this function. Pass in the
-    intial size of the 0 population, along with the growth rates of
-    the two populations. (defined BEFORE loss in the larvae)
+    intial size of the introduced species as Pinit, along with the
+    larval production rate of the introduced (R0) and native(R1)
+    species.
 
     Returns the number of generations run before the 0 population
     goes extinct (or we reach Tmax), and the final population distribution.
 
-    nsp is only used to print out which run we are doing
+    nsp is the number of introduction we are running. It is passsed in only
+    so we can print it out in diagnostics below.
 
     '''
-
-
-    #This is now done above to keep variables in global scope
-    #to make parallelization more efficient.
-    #
-    #load a connectivity matrix and convert to linear models
-    #ConnectivityModelName='E_all_the_americas_depth1_minPLD22_maxPLD22_months4_to_6'
-    #EfileName='transposes/'+ConnectivityModelName+'.zarr'
-    #EwhereTo,EnumTo,EfracReturn,Ecumsum,\
-    #    nxny2nlin,nlin2nxny,nxny2lonLat,nlin2lonLat=cLM.makeLinearModel(EfileName)
-
-    
-    #define initial population. P array has size (Ndomain,Nspecies),
-    #where Nspecies is the number of species. P is an integer array,
-    #since it is the number of individuals in a habitat. The carrying
-    #capacity of the habitat is Pmax. Run model for Tmax generations
-    #the number of larvae produced per adult which survives till it
-    #could settle if in suitable habitat is R, which may be a float.
-    #R0 is the growth rate of species 0, R1 of species 1
-    #Pmax=4
-    #Tmax=201
-    #R0=16.0+1
-    #R1=16.0
-
-    #the arrays for the population P and where the larvae settle,
-    #whereSettle, are created as shared memory arrays to reduce
-    #overhead of communication when parallelization. Both must be
-    #(Ndomain,Nspecies) in size, and thus cannot be made until we know
-    #the number of species and the size of the domain.  so lets define
-    #the size of the domain below (Ndomain), and then make the initial
-    #species distribution and determine the number of species
 
     #record when starting for benchmarking
     ticBench=time.time()
@@ -243,26 +215,12 @@ def runModelOnce(Pinit,R0,R1,Pmax,Tmax,nsp):
     #now make initial P
     Nspecies=2
     P=zeros((Ndomain,Nspecies),dtype=int)
-    if False:
-        #set initial condition manually, for debugging
-        def findClosest(lonVec,latVec,lonP,latP):
-            return argmin(((lonVec-lonP)/cos(deg2rad(latVec)))**2+(latVec-latP)**2)
-        lonVec=array([nlin2lonLat[n][0] for n in nlin2lonLat])
-        latVec=array([nlin2lonLat[n][1] for n in nlin2lonLat])
-        n0=findClosest(lonVec,latVec,-74.42,39.21); P[n0,0]=4 #put 0 species in one place
-        P[:,1]=Pmax; P[n0,1]=0 #put species 1 everywhere else but where species 0 introduced
-    else:
-        #this old code is wrong if Pmax is not 1
-        #because P[indx,1]=Pmax-P[indx,0] so habitat starts full
-        #P[:,0]=Pinit
-        #indx=Pinit==0
-        #P[indx,1]=Pmax
         
-        #here we set the initial abundance of the native species as
-        #Pmax-(abundance of introduced species) so that the initial
-        #population density is at Pmax everywhere. 
-        P[:,0]=Pinit
-        P[:,1]=Pmax-P[:,0]
+    #here we set the initial abundance of the native species as
+    #Pmax-(abundance of introduced species) so that the initial
+    #population density is at Pmax everywhere. 
+    P[:,0]=Pinit
+    P[:,1]=Pmax-P[:,0]
         
     #==================================
             
@@ -313,11 +271,9 @@ def runModelOnce(Pinit,R0,R1,Pmax,Tmax,nsp):
 
         now=time.time()
         if False:
-            #print every generation
+            #print diagnostic every generation
             print('   generation %d took'%nt,now-tic,' and',
                   now-tic2,'; the population of the two species are',sum(P[:,0]),sum(P[:,1]),flush=True)
-
-        #breakpoint()
 
         #if the total population of 0 species (the introduced one) is 0, then quit
         if sum(P[:,0])==0:
@@ -345,7 +301,7 @@ if __name__=="__main__":
     #model runs.
     #
     #for speed, the Nregion model runs will be made in parallel. 
-    nRun=1000
+    nRun=100 ; print('FOR SPEED OF INITIAL USE, nRun IS SET TO 100. IT SHOULD BE LARGER IN MOST CASES')
 
     for nR in range(nRun):
 
@@ -419,10 +375,13 @@ if __name__=="__main__":
                         ntVecFinal[nsp]=nt
                         finalPopVec[:,nsp]=Pfinal
                 else:
-                    #parallel run. EXPERIMENT WITH THIS in general, in
-                    #machines with hyperthreading, divide the number
-                    #of CPU's reported by cpu_count() by two because
-                    #that number includes virtual cores created by
+                    #parallel run. Each introduction region will be run
+                    #on a seperate core of the machine. 
+
+                    #In general, in machines with
+                    #hyperthreading, divide the number of CPU's
+                    #reported by cpu_count() by two because that
+                    #number includes virtual cores created by
                     #hyperthreading. On machines without
                     #hyperthreading, don't divide by two. But
                     #experiment...
@@ -463,6 +422,8 @@ if __name__=="__main__":
                             if Nintro>len(initialPoints):
                                 print('For population',nsp,'Population initially saturated')
 
+                        #argVec are the list of arguements to be fed into the multiprocessing routine
+                        #which will run all the different introductions on different cores. 
                         argVec.append((Pinit,R0,R1,Pmax,Tmax,nsp))
 
                     tic=time.time()

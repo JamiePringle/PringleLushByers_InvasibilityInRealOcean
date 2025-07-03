@@ -11,7 +11,7 @@ import cartopy
 
 #What model run are we using
 ConnectivityModelName='E_CmaenasHab_depth1_minPLD40_maxPLD40_months5_to_6';
-Pmax=1; Tmax=601*4; R0=8.8; R1=8.0; Nintro=1; nRun=1000
+Pmax=1; Tmax=601*4; R0=8.8; R1=8.0; Nintro=1; nRun=5
 
 #load connectivity data
 EfileName='transposes/twoSpecies_'+ConnectivityModelName+'.zarr'

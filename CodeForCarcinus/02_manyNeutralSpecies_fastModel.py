@@ -18,15 +18,16 @@ import createLinearModel_module as cLM
 # is done for speed, and does not affect anything -- nothing in the
 # underlying connectivity of the habitats is changed.
 
-#assumes the model output directory modelOutputNeutral exists
+#Assumes the model output directory modelOutputNeutral exists
 assert os.path.exists('modelOutputNeutral'), 'please create directory modelOutputNeutral to store model output'  
 
-#initialize random number generator
+#Initialize random number generator
 rng=np.random.default_rng()
 
-#we load the large connectivity data in global scope, so we don't have to pass it into the
-#parallel functions each time we call the. Sigh. The connectivity matrix specified by
-#ConnectivityModelName was created by 00_makeConnectivityMatrices.py
+#We load the large connectivity data in global scope, so we don't have
+#to pass it into the parallel functions each time we call
+#the. Sigh. The connectivity matrix specified by ConnectivityModelName
+#was created by 00_makeConnectivityMatrices.py
 print('Loading model',flush=True)
 ConnectivityModelName='E_CmaenasHab_depth1_minPLD40_maxPLD40_months5_to_6'
 EfileName='transposes/'+ConnectivityModelName+'.zarr'
@@ -35,29 +36,33 @@ EwhereTo,EnumTo,EfracReturn,Ecumsum,\
 print('       done loading model',flush=True)
 
 
-#for better profiling, and for better parallelization, lets move the
-#computational core to a function
-#@profile
+#This function calculates how many larvae are produced by each species, and where
+#they settle given the statistics in the connectivity matrices E.
 def findWhereSettle(Pname,whereSettleName,lowerBound,upperBound,R,Ndomain,Nspecies):
     #see below for what these parameters are. Pname and whereSettleName are the
     #shared memory names for P and whereSettle
 
     tic=time.time()
 
-    #the variables P, the population, and whereSettle, the number of
-    #larvae which settle at each location, are shared memory
-    #arrays. Only processes those parts of the array that lie between
-    #species lowerBound:upperBound, e.g. P[:,lowerBound:upperBound] and only
-    #change whereSettle[:,lowerBound:upperBound]
+    #The variables P, the population, and whereSettle, the number of
+    #larvae which settle at each location for each species, are shared
+    #memory arrays. Only processes those parts of the array that lie
+    #between species lowerBound:upperBound,
+    #e.g. P[:,lowerBound:upperBound] and only change
+    #whereSettle[:,lowerBound:upperBound]. This is more complicated than
+    #the usual mechanisms for sharing data while multiprocessing, but is
+    #much, much faster in this case. 
     shm_P=shared_memory.SharedMemory(name=Pname)
     shm_whereSettle=shared_memory.SharedMemory(name=whereSettleName)
     P=ndarray((Ndomain,Nspecies),dtype=int,buffer=shm_P.buf)
     whereSettle=ndarray((Ndomain,Nspecies),dtype=int,buffer=shm_whereSettle.buf)
 
-    #only work on species that exist
+    #Only work on species that exist. To do this, find the total
+    #population of each species by suming along the space axes. P has
+    #dimensions [space,species]
     Psum=P.sum(axis=0)
     
-    #now loop over species
+    #now loop over species, and find where the larvae of each settle.
     for nsp in range(lowerBound,upperBound):
         if Psum[nsp]>0:
             #Pvec=P[:,nsp]
@@ -65,14 +70,19 @@ def findWhereSettle(Pname,whereSettleName,lowerBound,upperBound,R,Ndomain,Nspeci
             #What is total number of larvae launched from each point which survive
             totalSurvive=R*P[:,nsp]*EfracReturn #note, can be much less than 1!
 
-            #now convert totalSurvive into an array of integers. The
-            #likelyhood that it is rounded up is the fractional part, the
-            #likelyhood that it is round down is the 1-fractional part. We
-            #do this by adding to totalSurvive a random uniform number
-            #between 0 and 1, and then rounding down.
+            #Now convert totalSurvive into an array of integers. The
+            #likelyhood that it is rounded up is the fractional part,
+            #the likelyhood that it is round down is the 1-fractional
+            #part. I.e. 1.7 has a 30% chance of being rounded to 2,
+            #and a 70% chance of being rounded to 1. We do this by
+            #adding to totalSurvive a random uniform number between 0
+            #and 1, and then rounding down.
             intSurvive=floor(rng.random(Ndomain)+totalSurvive).astype(int)
-            #breakpoint()
 
+            #define thisWhereSettle, the number of larvae from the
+            #species we are considering now in the loop which settle
+            #at each location. So it is the length of the spatial
+            #domain
             thisWhereSettle=zeros((Ndomain,),dtype=int)
             for n in arange(Ndomain)[P[:,nsp]>0]:
                 #make array of integers which is list of which entries in EwhereTo of where the larvae are going
@@ -81,7 +91,7 @@ def findWhereSettle(Pname,whereSettleName,lowerBound,upperBound,R,Ndomain,Nspeci
                 #now make array of what indices in the linear domain the larvae are going into
                 whereSettleInDomain=EwhereTo[n][whereGoList]
 
-                #where settle contains the number of larve from the species which reach
+                #whereSettle contains the number of larve from the species which reach
                 #each point in the domain.
                 if False:
                     #this is actually much slower, by a factor of two... But is this true
@@ -90,7 +100,7 @@ def findWhereSettle(Pname,whereSettleName,lowerBound,upperBound,R,Ndomain,Nspeci
                 else:
                     for n in whereSettleInDomain:
                         thisWhereSettle[n]+=1
-                #breakpoint()
+
 
             #put answer into whereSettle
             whereSettle[:,nsp]=thisWhereSettle
@@ -99,13 +109,13 @@ def findWhereSettle(Pname,whereSettleName,lowerBound,upperBound,R,Ndomain,Nspeci
     return None #all communication done through shared memory arrays
 
 #write a function that determines how many of the larvae in
-#whereSettle survive to be adults in P.  now there are two
-#possibilities. Where the total number of larvae reaching a location
+#whereSettle survive to be adults in P.  Now there are two
+#possibilities: Where the total number of larvae reaching a location
 #is less than or equal to Pmax, they all survive. Where it is greater,
 #choose Pmax survivors randomly from the larvae.  Do this in a
 #function so it is easy to profile. NOTE WELL, assume all fitness
 #differences are in the fecundity and dispersal, and thus handled by
-#findWhereSettle() 
+#findWhereSettle() and not in whichLarvaeSurvive() 
 def whichLarvaeSurvive(Pname,whereSettleName,lowerBound,upperBound,Pmax,Ndomain,Nspecies):
     #inputs:
     #  P: population matrix (Ndomain,Nspecies). Pass in name of shared memory in which it is stored
@@ -125,16 +135,18 @@ def whichLarvaeSurvive(Pname,whereSettleName,lowerBound,upperBound,Pmax,Ndomain,
     P=ndarray((Ndomain,Nspecies),dtype=int,buffer=shm_P.buf)
     whereSettle=ndarray((Ndomain,Nspecies),dtype=int,buffer=shm_whereSettle.buf)
 
-    #find total number of recruits, and put them in population
-    #if the number is less or equal than Pmax
+    #find total number of recruits into each location, and put them in
+    #population if the number is less or equal than Pmax. Not that all
+    #arrays are of shape [spaceIndex,speciesIndex]
     totalRecruits=whereSettle.sum(axis=1)
 
-    #find which regions this call to whichLarvaeSurvive() will deal with...
+    #find which locations this call to whichLarvaeSurvive() will deal with...
     #make an indx of all False's, then fill area we are interested in with True
     indxWorryAbout=zeros((Ndomain,),dtype=bool)
     indxWorryAbout[lowerBound:upperBound]=True
     
-    #don't worry about empty habitat? Does this save time? Then have to make a new index below...
+    #Fill all locations where the number of larvae attempting to settle in a region
+    #is less than Pmax. This does NOT include case where no larvae get to region!
     indx=logical_and(totalRecruits<=Pmax,totalRecruits>0)
     indx=logical_and(indx,indxWorryAbout) #only process between lower and upperBound
     P[indx,:]=whereSettle[indx,:]
@@ -162,8 +174,8 @@ def whichLarvaeSurvive(Pname,whereSettleName,lowerBound,upperBound,Pmax,Ndomain,
             #P[nin,:]=0 #this is surprizingly slow, do elsewhere. 
             for n in whichSpeciesSettle:
                 P[nin,n]+=1
-        #breakpoint()
-            
+
+    #return nothing, everything is communicated via shared memory
     return None
 
 __spec__=None
@@ -171,33 +183,49 @@ if __name__=="__main__":
 
     #In order to better understand stochastic effects, lets run this
     #model nRun times, and save the results from each model run
-    nRun=1000
+    nRun=100; print('WARNING -- RUNNING ONLY 100 TIMES; FOR REAL SCIENCE RUN MORE TIMES')
 
     #first, loop over model runs -- because results are stochastic, you
     #want to run it multiple times. nRun controls how many times the model is run
     for nR in range(nRun):
         print('Starting run',nR)
 
-        #define initial population. P array has size (Ndomain,Nspecies),
-        #where Nspecies is the number of species. P is an integer array,
-        #since it is the number of individuals in a habitat. The carrying
-        #capacity of the habitat is Pmax. Run model for Tmax generations
-        #the number of larvae produced per adult which survives till it
-        #could settle if in suitable habitat is R, which may be a float.
+        #Define initial population statistics. P array has size
+        #(Ndomain,Nspecies), where Nspecies is the number of species
+        #and Ndomain is the size of the domain. P is an integer array,
+        #since it is the number of individuals in a habitat.
+        #
+        #The carrying capacity of the habitat is Pmax.
+        #
+        #Run model for Tmax generations.
+        #
+        #The number of larvae produced per adult which survives till
+        #it could settle if in suitable habitat is R, which may be a
+        #floating point number..
         Pmax=1
         Tmax=601
         R=16.0
+
+        #define the intial condition file -- this is created by
+        #01_makeInitalIntroductionRanges.py and delineates the regions
+        #into which individual species are introduced.
         initialConditionFile='initialConditions/'+ConnectivityModelName+'.zip'
 
         #now, and important and subtle parameter. How many
         #introductions do we have? I.e. in each species location, how
-        #many adults do we start with. Call this Nintro. If negative,
-        #fill entire species range. Otherwise just release Nintro
-        #individuals into the domain, as long as each region they are
-        #released into can hold more adults than Nintro.
+        #many adults of a species we are following do we start
+        #with. Call this Nintro. If negative, fill entire species
+        #range defined by the initialConditionsFile. Otherwise just
+        #release Nintro individuals into the domain, as long as each
+        #region they are released into can hold more adults than
+        #Nintro.  All other spaces in the domain are filled with
+        #another species which we do not pay attention to. (It must be
+        #filled with something, so that there is not an intial burst
+        #of population growth to fill the empty habitat. This would
+        #play with various statistics in funny ways.)
         Nintro=1
         
-        #the arrays for the population P and where the larvae settle,
+        #The arrays for the population P and where the larvae settle,
         #whereSettle, are created as shared memory arrays to reduce
         #overhead of communication when parallelization. Both must be
         #(Ndomain,Nspecies) in size, and thus cannot be made until we know
@@ -208,7 +236,7 @@ if __name__=="__main__":
         #how big is domain
         Ndomain=len(nxny2nlin)
 
-        #now make initial P.  what is initial condition? The file
+        #Now make initial P.  What is initial condition? The file
         #specified by initialConditionFile should have been created
         #with the same connectivity matrix as used in this model, and
         #is a vector of the same length as the linear domain, with a
@@ -220,8 +248,8 @@ if __name__=="__main__":
 
         #the number of species is the number of regions if Nintro<0,
         #and all regions start full. It is the number of regions+1 if
-        #Nintro>0, because we need a species to fill otherwise initial
-        #habitat. Otherwise the initial introduction number is
+        #Nintro>0, because we need a species to fill otherwise empty
+        #initial habitat. Otherwise the initial introduction number is
         #obscured by a burst of growth into otherwise empty habitats.
         #this filler species is species numbered
         #len(unique(speciesList))
@@ -273,6 +301,7 @@ if __name__=="__main__":
                 for thePoint in initialPoints[:numPoints]:
                     P[thePoint,nSp]+=1
 
+                #a quick sanity check
                 if Nintro>len(initialPoints):
                     print('For population',nsp,'Population initially saturated')
 
@@ -293,7 +322,6 @@ if __name__=="__main__":
         #ok, now just double check that all habitat is filled to Pmax
         Ptotal=sum(P,axis=1)
         assert (Ptotal==Pmax).all(),'Not all of the initial habitat is at carrying capacity!?!?'
-        #breakpoint()
 
         #make lat and lon vectors for plotting
         lonVec=array([nlin2lonLat[n][0] for n in nlin2lonLat])
@@ -415,10 +443,10 @@ if __name__=="__main__":
             if remainder(nt,100)==0 and nt>0:
                 #now make the file name in which data will be saved. 
                 if Nintro<0:
-                    fileOut=('modelOutputNeutral/twoSpecies_'+ConnectivityModelName
+                    fileOut=('modelOutputNeutral/manySpecies_'+ConnectivityModelName
                              +'_Params_R_%2d_Tmax%3.3d_Pmax%2.2d_nRun%d.zip'%(R,nt,Pmax,nR))
                 else:
-                    fileOut=('modelOutputNeutral/twoSpecies_'+ConnectivityModelName
+                    fileOut=('modelOutputNeutral/manySpecies_'+ConnectivityModelName
                              +'_Params_R_%2d_Tmax%3.3d_Pmax%2.2d_Nintro%2.2d_nRun%d.zip'%(R,nt,Pmax,Nintro,nR))
                 print('   generation %d took'%nt,now-tic,' and',now-tic2,
                       'at species level, total species left',numSpeciesLeft)

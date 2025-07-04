@@ -110,7 +110,7 @@ The output of the code is kept in the `modelOutputRelativeFitness` directory in 
 
   These codes work the in the same manner as the equivalent codes for neutral dynamics, except you must explicitly say how many runs you are analyzing by adjusting the `nRun` variable. This decision to manually adjust `nRun` was made to allow the analysis of output from `04_twoSpeciesModel_differentR_relativeFitnessDifference.py` before it had finished all of the runs. 
 
-  Here are figures showing where introductions into a given location lead to populations which persist anywhere (the first plot from `05_analyzeWhereSurvivorsStarted_RelativeFitnessModel.py`) and where introductions into a location lead to populations that persist at that location (the second plot, from `05_B_analyzeWhereSurvivorsStarted_RelativeFitnessModel_onlyIfInIntroductionLocation.py`).  _NOTE WELL, NEEDS TO BE ReRUN AFTER FULL MODEL RUN_	
+  Here are figures showing where introductions into a given location lead to populations which persist anywhere (the first plot from `05_analyzeWhereSurvivorsStarted_RelativeFitnessModel.py`) and where introductions into a location lead to populations that persist at that location (the second plot, from `05_B_analyzeWhereSurvivorsStarted_RelativeFitnessModel_onlyIfInIntroductionLocation.py`).  	
   ![Introduction with relative fitness, survives anywhere](docs/05_analyzeWhereSurvivorsStarted_RelativeFitnessModel.png)
   ![Model with relative fitness, survives in region of introduction](docs/05_B_analyzeWhereSurvivorsStarted_RelativeFitnessModel_onlyIfInIntroductionLocation.png)
   

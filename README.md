@@ -1,5 +1,3 @@
-# Warning, this Repo is not yet ready… Do not use until this warning has gone away, or at least do not complain if you have any problems doing so
-
 # Code and figures Pringle, Lush & Byers
 
 Interactive figures and code for the Pringle, Lush and Byers paper "Alongshore variation in currents make some regions of the coastal ocean more vulnerable to the introduction of non-native species with planktonic dispersal." More information will appear here once the manuscript makes it through the review process and we have adjusted this page to reflect any revisions. 

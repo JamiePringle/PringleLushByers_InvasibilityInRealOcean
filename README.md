@@ -8,7 +8,7 @@ Interactive figures and code for the Pringle, Lush and Byers paper "Alongshore v
 
 The interactive version of [Figure 3 in the paper is here](https://jamiepringle.github.io/PringleLushByers_InvasibilityInRealOcean/).
 
-### Code to replicate the results of Section _Discussion: Comparisons with observed introductions:Carcinus maenas in the Canadian Maratimes after the mid 1980s_
+### Code to replicate the results of Section "_Discussion: Comparisons with observed introductions:Carcinus maenas in the Canadian Maratimes after the mid 1980s_"
 
 The results in this paper can be replicated for other regions of the globe, other planktonic durations and larval vertical behaviors. A guide to doing so is given below, using as an example the discussion of _Carcinus maenas_. 
 

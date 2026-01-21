@@ -22,7 +22,7 @@ conda create -n LSRfind numpy ipython matplotlib cartopy zarr xarray scikit-lear
 conda activate LSRfind
 ```
 
-When the code release in this GitHub repository (look on the right column of this page) is downloaded and uncompressed, it should create the necessary empty directories that this code expects: `OSNdataDir`, `modelOutputNeutral` and `modelOutputRelativeFitness`. The programs should be run in a directory which has these directories within it. 
+When the code release in this GitHub repository (look on the right column of this page) is downloaded and uncompressed, it should create a directory named `PringleLushByers_InvasibilityInRealOcean-*`, where the * is replaced by the version of the code. Within that directory will be a directory `CodeForCarcinus` with the code described below.  the necessary empty directories that this code expects: `OSNdataDir`, `modelOutputNeutral` and `modelOutputRelativeFitness`. The programs should be run in a directory which has these directories within it. 
 
 All of the data required to run the models has been created as part of the [EZfate project](https://github.com/JamiePringle/EZfate). It will automatically be downloaded by the included `getEZfateFromOSN.py` module.  
 
